@@ -1,6 +1,13 @@
 import cv2
-import time
+import time  
+import pandas
+from datetime import datetime
 first_frame=None
+status_list=[None,None]
+times=[]
+df=pandas.DataFrame(columns=["Start","End"])
+
+
 
 video=cv2.VideoCapture(0)
 video.read()
@@ -8,7 +15,7 @@ time.sleep(2)
 while(True):
 
     check, frame =video.read()
-    print(frame)
+    status=0
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     gray = cv2.GaussianBlur(gray,(21,21),0)
     
@@ -21,10 +28,16 @@ while(True):
     thresh_delta=cv2.dilate(thresh_delta,None,iterations=2)
     (cnts,_)=cv2.findContours(thresh_delta.copy(),cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
     for contour in cnts:
-        if cv2.contourArea(contour)<1000:
+        if cv2.contourArea(contour)<15000:
            continue
+        status=1   
         (x,y,w,h) =cv2.boundingRect(contour)
         cv2.rectangle(frame,(x,y),(x+w,y+h),(0,255,0),3)
+    status_list.append(status)
+    if status_list[-1]==1 and status_list[-2]==0:
+        times.append(datetime.now())
+    if status_list[-1]==0 and status_list[-2]==1:
+        times.append(datetime.now())
     cv2.imshow("gray frame",gray)
     cv2.imshow("DELTA FRAME",delta_frame)
     cv2.imshow("THRESHOLD FRAME",thresh_delta)
@@ -32,9 +45,14 @@ while(True):
      
     key=cv2.waitKey(1)
     if key==ord('q'):
+        if status==1:
+            times.append(datetime.now())
         break
-print(gray)
-print(delta_frame)
+print(status_list) 
+print(times)
+for i in range(0,len(times),2):
+    df=df.append({"Start":times[i],"End":times[i+1]},ignore_index=True)
+df.to_csv("Times.csv")
 video.release()
 cv2.DestroyAllWindows
 
